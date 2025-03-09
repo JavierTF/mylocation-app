@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "my-location-app",
+    "slug": "my-location-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/location.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Esta aplicación necesita acceder a tu ubicación para mostrarla en el mapa.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Esta aplicación necesita acceder a tu ubicación para el seguimiento en tiempo real."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.javiertoussentfis.mylocationapp",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION", 
+        "ACCESS_FINE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/location.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permite a la aplicación acceder a tu ubicación."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "102a6e04-788d-45ff-87a5-8594c35f49ec"
+      }
+    }
+  }
+}
