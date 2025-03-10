@@ -1,50 +1,52 @@
-# Welcome to your Expo app 👋
+# To Do List
+Developed by: Ing. Javier Toussent Fis  
+Email: javiertoussentfis@gmail.com
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Current location Features
+- Current location: It's mandatory to allow location permission
 
-## Get started
+## Installation Instructions
 
-1. Install dependencies
+### Prerequisites
+- Node.js (v20.18.2 or newer)
+- npm (v10.8.2 or newer)
+- Expo CLI
 
-   ```bash
-   npm install
-   ```
+### Installation Steps
 
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+1. Clone the repository
 ```bash
-npm run reset-project
+git clone [https://github.com/JavierTF/mylocation-app]
+cd mylocation-app
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Install dependencies
+```bash
+npm install
+```
 
-## Learn more
+3. Start the Expo development server
+```bash
+npx expo start --clear
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+4. Run on a device or emulator
+   - Scan the QR code with the Expo Go app on your mobile device
+   - Press 'a' to run on an Android emulator
+   - Press 'i' to run on an iOS simulator
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Building the APK
 
-## Join the community
+To create a standalone APK for Android:
 
-Join our community of developers creating universal apps.
+1. Configure app.json for your project details
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+2. Build the APK
+```bash
+expo build:android -t apk
+```
+
+3. Follow the Expo build instructions to download your APK
+
+## Development Notes
+This app was built with Expo, a framework for React Native applications that allows for easy development and deployment across platforms.
