@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 
 interface LocationObject {
@@ -123,12 +123,14 @@ export default function LocationMap(): JSX.Element {
           <MapView
             ref={mapRef}
             style={styles.map}
-            provider={PROVIDER_GOOGLE}
+            provider={PROVIDER_DEFAULT}
             initialRegion={region || undefined}
             showsUserLocation={true}
             showsMyLocationButton={true}
             showsCompass={true}
             showsScale={true}
+            zoomEnabled={true}
+            rotateEnabled={true}
           >
             <Marker
               coordinate={{
