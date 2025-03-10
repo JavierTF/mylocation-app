@@ -12,8 +12,18 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Esta aplicación necesita acceder a tu ubicación para mostrarla en el mapa.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Esta aplicación necesita acceder a tu ubicación para el seguimiento en tiempo real."
-      }
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Esta aplicación necesita acceder a tu ubicación para el seguimiento en tiempo real.",
+        "NSLocationAlwaysUsageDescription": "Esta aplicación necesita acceder a tu ubicación en segundo plano para seguimiento continuo.",
+        "NSLocationTemporaryUsageDescriptionDictionary": {
+          "PreciseLocationPurpose": "Necesitamos tu ubicación precisa para proporcionarte servicios basados en tu posición."
+        },
+        "UIBackgroundModes": ["location", "fetch"],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsArbitraryLoadsInWebContent": true
+        }
+      },
+      "bundleIdentifier": "com.javiertoussentfis.mylocationapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,8 +34,14 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION", 
         "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "FOREGROUND_SERVICE",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ]
     },
     "web": {
@@ -47,7 +63,11 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Permite a la aplicación acceder a tu ubicación."
+          "locationAlwaysAndWhenInUsePermission": "Permite a la aplicación acceder a tu ubicación en todo momento.",
+          "locationAlwaysPermission": "Permite a la aplicación acceder a tu ubicación incluso cuando está en segundo plano.",
+          "locationWhenInUsePermission": "Permite a la aplicación acceder a tu ubicación mientras la usas.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ]
     ],

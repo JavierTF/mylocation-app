@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import NetInfo from '@react-native-community/netinfo';
 
-// Componente para verificar la conexión a Internet
-import InternetConnectionCheck from '../../components/InternetConnectionCheck';
+import InternetConnectionCheck from '../components/InternetConnectionCheck';
 
 interface LocationObject {
   coords: {
@@ -15,7 +14,7 @@ interface LocationObject {
   };
 }
 
-export default function LocationMap(): JSX.Element {
+export default function LocationApp(): JSX.Element {
   const [location, setLocation] = useState<LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -23,7 +22,6 @@ export default function LocationMap(): JSX.Element {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const mapRef = useRef<MapView | null>(null);
 
-  // Verificar la conexión a Internet cuando se carga el componente
   useEffect(() => {
     const checkInternetConnection = async () => {
       const netInfoState = await NetInfo.fetch();
@@ -137,6 +135,7 @@ export default function LocationMap(): JSX.Element {
     }
   };
 
+  // Renderizado de carga
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -146,6 +145,7 @@ export default function LocationMap(): JSX.Element {
     );
   }
 
+  // Renderizado de error
   if (errorMsg) {
     return (
       <View style={styles.centered}>
@@ -154,75 +154,98 @@ export default function LocationMap(): JSX.Element {
     );
   }
 
+  // Renderizado principal con estructura de columna
   return (
-    <View style={styles.container}>
-      {/* Componente de verificación de Internet */}
-      <View style={styles.internetCheckContainer}>
+    <View style={styles.mainContainer}>
+      {/* Componente de verificación de Internet - Ahora como primera sección */}
+      <View style={styles.internetCheckSection}>
         <InternetConnectionCheck />
       </View>
       
-      {location ? (
-        <>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={PROVIDER_DEFAULT}
-            initialRegion={region || undefined}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-            showsCompass={true}
-            showsScale={true}
-            zoomEnabled={true}
-            rotateEnabled={true}
-          >
-            <Marker
-              coordinate={{
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-              }}
-              title="Mi ubicación"
-              description={`Lat: ${location.coords.latitude.toFixed(6)}, Lng: ${location.coords.longitude.toFixed(6)}`}
-              pinColor="red"
-            />
-          </MapView>
-          
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button} onPress={centerMapOnLocation}>
-              <Text style={styles.buttonText}>Centrar mapa</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.button, styles.trackButton]} 
-              onPress={startLocationTracking}
+      {/* Sección del mapa como segunda sección */}
+      <View style={styles.mapSection}>
+        {location ? (
+          <View style={styles.mapContainer}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              provider={PROVIDER_DEFAULT} // Usa el proveedor por defecto del sistema
+              initialRegion={region || undefined}
+              showsUserLocation={true}
+              showsMyLocationButton={true}
+              showsCompass={true}
+              showsScale={true}
+              zoomEnabled={true}
+              rotateEnabled={true}
+              loadingEnabled={true}
+              loadingIndicatorColor="#007BFF"
+              loadingBackgroundColor="#FFFFFF"
             >
-              <Text style={styles.buttonText}>Seguimiento en tiempo real</Text>
-            </TouchableOpacity>
+              <Marker
+                coordinate={{
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                }}
+                title="Mi ubicación"
+                description={`Lat: ${location.coords.latitude.toFixed(6)}, Lng: ${location.coords.longitude.toFixed(6)}`}
+                pinColor="red"
+              />
+            </MapView>
+            
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity style={styles.button} onPress={centerMapOnLocation}>
+                <Text style={styles.buttonText}>Centrar mapa</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.button, styles.trackButton]} 
+                onPress={startLocationTracking}
+              >
+                <Text style={styles.buttonText}>Seguimiento en tiempo real</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                Latitud: {location.coords.latitude.toFixed(6)}
+              </Text>
+              <Text style={styles.infoText}>
+                Longitud: {location.coords.longitude.toFixed(6)}
+              </Text>
+              <Text style={styles.infoText}>
+                Precisión: ±{location.coords.accuracy?.toFixed(0)} metros
+              </Text>
+              <Text style={styles.infoText}>
+                Internet: {isConnected ? 'Conectado' : 'Sin conexión'}
+              </Text>
+            </View>
           </View>
-          
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              Latitud: {location.coords.latitude.toFixed(6)}
-            </Text>
-            <Text style={styles.infoText}>
-              Longitud: {location.coords.longitude.toFixed(6)}
-            </Text>
-            <Text style={styles.infoText}>
-              Precisión: ±{location.coords.accuracy?.toFixed(0)} metros
-            </Text>
-            <Text style={styles.infoText}>
-              Internet: {isConnected ? 'Conectado' : 'Sin conexión'}
-            </Text>
+        ) : (
+          <View style={styles.centered}>
+            <Text style={styles.errorText}>No se pudo obtener la ubicación</Text>
           </View>
-        </>
-      ) : (
-        <Text style={styles.errorText}>No se pudo obtener la ubicación</Text>
-      )}
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  internetCheckSection: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: '#f8f9fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  mapSection: {
+    flex: 1,
+  },
+  mapContainer: {
     flex: 1,
     position: 'relative',
   },
@@ -236,16 +259,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  internetCheckContainer: {
-    position: 'absolute',
-    top: 80,
-    left: 10,
-    right: 10,
-    zIndex: 999,
-  },
   buttonContainer: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 30,
     alignSelf: 'center',
     flexDirection: 'row',
   },
