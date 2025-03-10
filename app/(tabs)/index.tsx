@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
+import NetInfo from '@react-native-community/netinfo';
+
+// Componente para verificar la conexión a Internet
+import InternetConnectionCheck from '../../components/InternetConnectionCheck';
 
 interface LocationObject {
   coords: {
@@ -16,7 +20,41 @@ export default function LocationMap(): JSX.Element {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [region, setRegion] = useState<Region | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const mapRef = useRef<MapView | null>(null);
+
+  // Verificar la conexión a Internet cuando se carga el componente
+  useEffect(() => {
+    const checkInternetConnection = async () => {
+      const netInfoState = await NetInfo.fetch();
+      setIsConnected(netInfoState.isConnected);
+      
+      if (!netInfoState.isConnected) {
+        Alert.alert(
+          'Sin conexión a Internet',
+          'Algunas funciones del mapa pueden no estar disponibles sin conexión a Internet.',
+          [{ text: 'Entendido' }]
+        );
+      }
+    };
+    
+    checkInternetConnection();
+    
+    // Suscribirse a cambios en la conectividad
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+      
+      if (state.isConnected && !isConnected) {
+        Alert.alert('Conexión restablecida', 'La conexión a Internet ha sido restablecida.');
+      } else if (!state.isConnected && isConnected) {
+        Alert.alert('Conexión perdida', 'Se ha perdido la conexión a Internet.');
+      }
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [isConnected]);
 
   useEffect(() => {
     (async () => {
@@ -118,6 +156,11 @@ export default function LocationMap(): JSX.Element {
 
   return (
     <View style={styles.container}>
+      {/* Componente de verificación de Internet */}
+      <View style={styles.internetCheckContainer}>
+        <InternetConnectionCheck />
+      </View>
+      
       {location ? (
         <>
           <MapView
@@ -166,6 +209,9 @@ export default function LocationMap(): JSX.Element {
             <Text style={styles.infoText}>
               Precisión: ±{location.coords.accuracy?.toFixed(0)} metros
             </Text>
+            <Text style={styles.infoText}>
+              Internet: {isConnected ? 'Conectado' : 'Sin conexión'}
+            </Text>
           </View>
         </>
       ) : (
@@ -189,6 +235,13 @@ const styles = StyleSheet.create({
   map: {
     width: '100%',
     height: '100%',
+  },
+  internetCheckContainer: {
+    position: 'absolute',
+    top: 80,
+    left: 10,
+    right: 10,
+    zIndex: 999,
   },
   buttonContainer: {
     position: 'absolute',
