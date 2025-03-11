@@ -23,9 +23,8 @@ export default function LocationApp(): JSX.Element {
   const [watchId, setWatchId] = useState<Location.LocationSubscription | null>(null);
   const [mapError, setMapError] = useState<boolean>(false);
 
-  // Obtener dimensiones de la pantalla para el mapa
   const screenWidth = Dimensions.get('window').width;
-  const mapHeight = Math.round(screenWidth * 0.8); // Proporción 4:3 para el mapa
+  const mapHeight = Math.round(screenWidth * 0.8);
 
   useEffect(() => {
     const checkInternetConnection = async () => {
@@ -43,13 +42,12 @@ export default function LocationApp(): JSX.Element {
     
     checkInternetConnection();
     
-    // Suscribirse a cambios en la conectividad
     const unsubscribe = NetInfo.addEventListener(state => {
       setIsConnected(state.isConnected);
       
       if (state.isConnected && !isConnected) {
-        Alert.alert('Conexión restablecida', 'La conexión a Internet ha sido restablecida.');
-        setMapError(false); // Reiniciar el estado de error del mapa cuando se restablece la conexión
+        // Alert.alert('Conexión restablecida', 'La conexión a Internet ha sido restablecida.');
+        setMapError(false);
       } else if (!state.isConnected && isConnected) {
         Alert.alert('Conexión perdida', 'Se ha perdido la conexión a Internet.');
       }
@@ -57,7 +55,6 @@ export default function LocationApp(): JSX.Element {
     
     return () => {
       unsubscribe();
-      // Limpiar el seguimiento de ubicación al desmontar
       if (watchId) {
         watchId.remove();
       }
@@ -115,7 +112,6 @@ export default function LocationApp(): JSX.Element {
         return;
       }
 
-      // Detener el seguimiento anterior si existe
       if (watchId) {
         watchId.remove();
       }
@@ -149,7 +145,6 @@ export default function LocationApp(): JSX.Element {
     }
   };
 
-  // Generar HTML para OpenStreetMap en WebView
   const getMapHTML = (): string => {
     if (!location) return '';
     
@@ -197,12 +192,10 @@ export default function LocationApp(): JSX.Element {
     `;
   };
 
-  // Función para manejar errores de WebView
   const handleWebViewError = () => {
     setMapError(true);
   };
 
-  // Renderizado de carga
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -212,7 +205,6 @@ export default function LocationApp(): JSX.Element {
     );
   }
 
-  // Renderizado de error
   if (errorMsg) {
     return (
       <View style={styles.centered}>
@@ -221,20 +213,16 @@ export default function LocationApp(): JSX.Element {
     );
   }
 
-  // Renderizado principal con estructura de columna
   return (
     <SafeAreaView style={styles.mainContainer}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Componente de verificación de Internet - Ahora como primera sección */}
         <View style={styles.internetCheckSection}>
           <InternetConnectionCheck />
         </View>
         
-        {/* Sección de la ubicación */}
         <View style={styles.locationSection}>
           {location ? (
             <>
-              {/* Información de la ubicación */}
               <View style={styles.infoBox}>
                 <Text style={styles.infoTitle}>Información de ubicación:</Text>
                 <Text style={styles.infoText}>
@@ -251,7 +239,6 @@ export default function LocationApp(): JSX.Element {
                 </Text>
               </View>
               
-              {/* Visualización de la ubicación - OpenStreetMap con WebView */}
               <View style={styles.mapContainer}>
                 <Text style={styles.mapTitle}>Tu ubicación en el mapa:</Text>
                 {isConnected && !mapError ? (
@@ -277,7 +264,6 @@ export default function LocationApp(): JSX.Element {
                 )}
               </View>
               
-              {/* Botones de acción */}
               <View style={styles.buttonContainer}>
                 <TouchableOpacity style={styles.button} onPress={refreshLocation}>
                   <Text style={styles.buttonText}>Actualizar ubicación</Text>
