@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
-import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, Dimensions, SafeAreaView, ScrollView } from 'react-native';
+import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import NetInfo from '@react-native-community/netinfo';
 
@@ -18,9 +18,14 @@ export default function LocationApp(): JSX.Element {
   const [location, setLocation] = useState<LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [region, setRegion] = useState<Region | null>(null);
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
-  const mapRef = useRef<MapView | null>(null);
+  const [trackingActive, setTrackingActive] = useState<boolean>(false);
+  const [watchId, setWatchId] = useState<Location.LocationSubscription | null>(null);
+  const [mapError, setMapError] = useState<boolean>(false);
+
+  // Obtener dimensiones de la pantalla para el mapa
+  const screenWidth = Dimensions.get('window').width;
+  const mapHeight = Math.round(screenWidth * 0.8); // Proporción 4:3 para el mapa
 
   useEffect(() => {
     const checkInternetConnection = async () => {
@@ -44,6 +49,7 @@ export default function LocationApp(): JSX.Element {
       
       if (state.isConnected && !isConnected) {
         Alert.alert('Conexión restablecida', 'La conexión a Internet ha sido restablecida.');
+        setMapError(false); // Reiniciar el estado de error del mapa cuando se restablece la conexión
       } else if (!state.isConnected && isConnected) {
         Alert.alert('Conexión perdida', 'Se ha perdido la conexión a Internet.');
       }
@@ -51,8 +57,12 @@ export default function LocationApp(): JSX.Element {
     
     return () => {
       unsubscribe();
+      // Limpiar el seguimiento de ubicación al desmontar
+      if (watchId) {
+        watchId.remove();
+      }
     };
-  }, [isConnected]);
+  }, [isConnected, watchId]);
 
   useEffect(() => {
     (async () => {
@@ -69,15 +79,6 @@ export default function LocationApp(): JSX.Element {
         });
 
         setLocation(currentLocation);
-        
-        const newRegion: Region = {
-          latitude: currentLocation.coords.latitude,
-          longitude: currentLocation.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        };
-        
-        setRegion(newRegion);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
         setErrorMsg('Error al obtener la ubicación: ' + errorMessage);
@@ -88,14 +89,21 @@ export default function LocationApp(): JSX.Element {
     })();
   }, []);
 
-  const centerMapOnLocation = (): void => {
-    if (location && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
+  const refreshLocation = async (): Promise<void> => {
+    setLoading(true);
+    setMapError(false);
+    
+    try {
+      let currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High
+      });
+      
+      setLocation(currentLocation);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      Alert.alert('Error', `No se pudo actualizar la ubicación: ${errorMessage}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -107,7 +115,12 @@ export default function LocationApp(): JSX.Element {
         return;
       }
 
-      Location.watchPositionAsync(
+      // Detener el seguimiento anterior si existe
+      if (watchId) {
+        watchId.remove();
+      }
+
+      const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
           timeInterval: 5000,
@@ -115,24 +128,78 @@ export default function LocationApp(): JSX.Element {
         },
         (newLocation) => {
           setLocation(newLocation);
-          
-          if (mapRef.current) {
-            const newRegion: Region = {
-              latitude: newLocation.coords.latitude,
-              longitude: newLocation.coords.longitude,
-              latitudeDelta: region ? region.latitudeDelta : 0.01,
-              longitudeDelta: region ? region.longitudeDelta : 0.01,
-            };
-            setRegion(newRegion);
-          }
         }
       );
       
+      setWatchId(subscription);
+      setTrackingActive(true);
       Alert.alert('Seguimiento activado', 'Ahora se está siguiendo tu ubicación en tiempo real');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       Alert.alert('Error', `No se pudo iniciar el seguimiento: ${errorMessage}`);
     }
+  };
+
+  const stopLocationTracking = (): void => {
+    if (watchId) {
+      watchId.remove();
+      setWatchId(null);
+      setTrackingActive(false);
+      Alert.alert('Seguimiento desactivado', 'Se ha detenido el seguimiento de ubicación');
+    }
+  };
+
+  // Generar HTML para OpenStreetMap en WebView
+  const getMapHTML = (): string => {
+    if (!location) return '';
+    
+    const latitude = location.coords.latitude;
+    const longitude = location.coords.longitude;
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+          <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+          <style>
+            body, html, #map {
+              margin: 0;
+              padding: 0;
+              height: 100%;
+              width: 100%;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="map"></div>
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              const map = L.map('map').setView([${latitude}, ${longitude}], 15);
+              
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              }).addTo(map);
+              
+              const marker = L.marker([${latitude}, ${longitude}]).addTo(map);
+              marker.bindPopup("Mi ubicación actual").openPopup();
+              
+              // Actualizar el marcador cuando recibamos una nueva ubicación
+              window.updateMarker = function(lat, lng) {
+                marker.setLatLng([lat, lng]);
+                map.setView([lat, lng], 15);
+              };
+            });
+          </script>
+        </body>
+      </html>
+    `;
+  };
+
+  // Función para manejar errores de WebView
+  const handleWebViewError = () => {
+    setMapError(true);
   };
 
   // Renderizado de carga
@@ -156,84 +223,101 @@ export default function LocationApp(): JSX.Element {
 
   // Renderizado principal con estructura de columna
   return (
-    <View style={styles.mainContainer}>
-      {/* Componente de verificación de Internet - Ahora como primera sección */}
-      <View style={styles.internetCheckSection}>
-        <InternetConnectionCheck />
-      </View>
-      
-      {/* Sección del mapa como segunda sección */}
-      <View style={styles.mapSection}>
-        {location ? (
-          <View style={styles.mapContainer}>
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              provider={PROVIDER_DEFAULT} // Usa el proveedor por defecto del sistema
-              initialRegion={region || undefined}
-              showsUserLocation={true}
-              showsMyLocationButton={true}
-              showsCompass={true}
-              showsScale={true}
-              zoomEnabled={true}
-              rotateEnabled={true}
-              loadingEnabled={true}
-              loadingIndicatorColor="#007BFF"
-              loadingBackgroundColor="#FFFFFF"
-            >
-              <Marker
-                coordinate={{
-                  latitude: location.coords.latitude,
-                  longitude: location.coords.longitude,
-                }}
-                title="Mi ubicación"
-                description={`Lat: ${location.coords.latitude.toFixed(6)}, Lng: ${location.coords.longitude.toFixed(6)}`}
-                pinColor="red"
-              />
-            </MapView>
-            
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity style={styles.button} onPress={centerMapOnLocation}>
-                <Text style={styles.buttonText}>Centrar mapa</Text>
-              </TouchableOpacity>
+    <SafeAreaView style={styles.mainContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Componente de verificación de Internet - Ahora como primera sección */}
+        <View style={styles.internetCheckSection}>
+          <InternetConnectionCheck />
+        </View>
+        
+        {/* Sección de la ubicación */}
+        <View style={styles.locationSection}>
+          {location ? (
+            <>
+              {/* Información de la ubicación */}
+              <View style={styles.infoBox}>
+                <Text style={styles.infoTitle}>Información de ubicación:</Text>
+                <Text style={styles.infoText}>
+                  Latitud: {location.coords.latitude.toFixed(6)}
+                </Text>
+                <Text style={styles.infoText}>
+                  Longitud: {location.coords.longitude.toFixed(6)}
+                </Text>
+                <Text style={styles.infoText}>
+                  Precisión: ±{location.coords.accuracy?.toFixed(0)} metros
+                </Text>
+                <Text style={styles.infoText}>
+                  Internet: {isConnected ? 'Conectado' : 'Sin conexión'}
+                </Text>
+              </View>
               
-              <TouchableOpacity 
-                style={[styles.button, styles.trackButton]} 
-                onPress={startLocationTracking}
-              >
-                <Text style={styles.buttonText}>Seguimiento en tiempo real</Text>
-              </TouchableOpacity>
+              {/* Visualización de la ubicación - OpenStreetMap con WebView */}
+              <View style={styles.mapContainer}>
+                <Text style={styles.mapTitle}>Tu ubicación en el mapa:</Text>
+                {isConnected && !mapError ? (
+                  <View style={[styles.webViewContainer, { height: mapHeight }]}>
+                    <WebView
+                      originWhitelist={['*']}
+                      source={{ html: getMapHTML() }}
+                      style={styles.webView}
+                      onError={handleWebViewError}
+                      javaScriptEnabled={true}
+                      domStorageEnabled={true}
+                    />
+                  </View>
+                ) : (
+                  <View style={[styles.noMapContainer, { height: mapHeight }]}>
+                    <Text style={styles.noMapText}>
+                      {isConnected 
+                        ? 'No se pudo cargar el mapa. Intente de nuevo más tarde.' 
+                        : 'Mapa no disponible sin conexión a internet'}
+                    </Text>
+                    <View style={styles.mapMarker} />
+                  </View>
+                )}
+              </View>
+              
+              {/* Botones de acción */}
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity style={styles.button} onPress={refreshLocation}>
+                  <Text style={styles.buttonText}>Actualizar ubicación</Text>
+                </TouchableOpacity>
+                
+                {trackingActive ? (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.stopButton]} 
+                    onPress={stopLocationTracking}
+                  >
+                    <Text style={styles.buttonText}>Detener seguimiento</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.trackButton]} 
+                    onPress={startLocationTracking}
+                  >
+                    <Text style={styles.buttonText}>Seguimiento en tiempo real</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          ) : (
+            <View style={styles.centered}>
+              <Text style={styles.errorText}>No se pudo obtener la ubicación</Text>
             </View>
-            
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                Latitud: {location.coords.latitude.toFixed(6)}
-              </Text>
-              <Text style={styles.infoText}>
-                Longitud: {location.coords.longitude.toFixed(6)}
-              </Text>
-              <Text style={styles.infoText}>
-                Precisión: ±{location.coords.accuracy?.toFixed(0)} metros
-              </Text>
-              <Text style={styles.infoText}>
-                Internet: {isConnected ? 'Conectado' : 'Sin conexión'}
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.centered}>
-            <Text style={styles.errorText}>No se pudo obtener la ubicación</Text>
-          </View>
-        )}
-      </View>
-    </View>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    flexDirection: 'column',
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContainer: {
+    flexGrow: 1,
   },
   internetCheckSection: {
     paddingVertical: 5,
@@ -242,12 +326,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
-  mapSection: {
+  locationSection: {
     flex: 1,
-  },
-  mapContainer: {
-    flex: 1,
-    position: 'relative',
+    padding: 15,
   },
   centered: {
     flex: 1,
@@ -255,20 +336,91 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  map: {
+  infoBox: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  infoText: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: '#444',
+  },
+  mapContainer: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    position: 'relative',
+  },
+  mapTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  webViewContainer: {
     width: '100%',
-    height: '100%',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  webView: {
+    flex: 1,
+  },
+  mapMarker: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 0, 0, 0.5)',
+    borderWidth: 3,
+    borderColor: 'red',
+    marginLeft: -10,
+    marginTop: -10,
+    zIndex: 2,
+  },
+  noMapContainer: {
+    width: '100%',
+    backgroundColor: '#eee',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  noMapText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    padding: 20,
   },
   buttonContainer: {
-    position: 'absolute',
-    bottom: 30,
-    alignSelf: 'center',
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   button: {
+    flex: 1,
     backgroundColor: '#007BFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
     borderRadius: 25,
     marginHorizontal: 5,
     elevation: 3,
@@ -276,14 +428,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   trackButton: {
     backgroundColor: '#28a745',
+  },
+  stopButton: {
+    backgroundColor: '#dc3545',
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
     textAlign: 'center',
+    fontSize: 15,
   },
   errorText: {
     color: 'red',
@@ -294,22 +452,5 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-  },
-  infoBox: {
-    position: 'absolute',
-    top: 20,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    padding: 10,
-    borderRadius: 10,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  infoText: {
-    fontSize: 14,
-    marginBottom: 3,
   },
 });
