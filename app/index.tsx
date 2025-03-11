@@ -38,7 +38,6 @@ export default function LocationApp(): JSX.Element {
     
     checkInternetConnection();
     
-    // Suscribirse a cambios en la conectividad
     const unsubscribe = NetInfo.addEventListener(state => {
       setIsConnected(state.isConnected);
       
@@ -135,7 +134,6 @@ export default function LocationApp(): JSX.Element {
     }
   };
 
-  // Renderizado de carga
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -145,7 +143,6 @@ export default function LocationApp(): JSX.Element {
     );
   }
 
-  // Renderizado de error
   if (errorMsg) {
     return (
       <View style={styles.centered}>
@@ -154,22 +151,19 @@ export default function LocationApp(): JSX.Element {
     );
   }
 
-  // Renderizado principal con estructura de columna
   return (
     <View style={styles.mainContainer}>
-      {/* Componente de verificación de Internet - Ahora como primera sección */}
       <View style={styles.internetCheckSection}>
         <InternetConnectionCheck />
       </View>
       
-      {/* Sección del mapa como segunda sección */}
       <View style={styles.mapSection}>
         {location ? (
           <View style={styles.mapContainer}>
             <MapView
               ref={mapRef}
               style={styles.map}
-              provider={PROVIDER_DEFAULT} // Usa el proveedor por defecto del sistema
+              provider={PROVIDER_DEFAULT}
               initialRegion={region || undefined}
               showsUserLocation={true}
               showsMyLocationButton={true}
